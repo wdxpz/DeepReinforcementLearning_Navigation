@@ -19,7 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Agent():
 
-    def __init__(self, state_size, action_size, seed, buffer_size = int(1e5), batch_size = 64, gamma = 0.99, tau = 1e-3, lr = 5e-4, update_every = 4, hidden_layers_size=[64, 32]):
+    def __init__(self, state_size, action_size, seed, buffer_size = int(1e5), batch_size = 64, gamma = 0.99, tau = 1e-3, lr = 5e-4, hidden_layers_size=[64, 32], update_every = 4, update_target_very = 12):
         """Initialize an Agent object.
         
         Params
@@ -38,6 +38,7 @@ class Agent():
         self.tau = tau
         self.lr = lr
         self.update_every = update_every
+        self.update_target_very = update_target_very
 
         # Q-Network
         self.qnetwork_local = DQNNetwork(state_size, action_size, seed, hidden_layers_size=hidden_layers_size).to(device)
@@ -48,6 +49,7 @@ class Agent():
         self.memory = ReplayBuffer(action_size, buffer_size, batch_size, seed)
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
+        self.t_target_step = 0
     
     def step(self, state, action, reward, next_state, done):
         # Save experience in replay memory
@@ -63,12 +65,11 @@ class Agent():
          
         """
         a implementation of fixed Q-Targets
-        """
-#         if len(self.memory) > self.batch_size:
-#             experiences = self.memory.sample()
-#             self.learn(experiences, self.gamma)   
-#         if self.t_step == 0:
-#             self.update_target_Q()
+        """   
+        self.t_target_step = (self.t_target_step + 1) % self.update_target_very
+        if self.t_target_step == 0:
+            if len(self.memory) > self.batch_size:
+                self.update_target_Q()
 
     def act(self, state, eps=0.):
         """Returns actions for given state as per current policy.
@@ -129,7 +130,7 @@ class Agent():
         
 
         # ------------------- update target network ------------------- #
-        self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)  
+#         self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)  
     
     def criterion(self, accumulated_rewords, old_values):
         return (accumulated_rewords - old_values).pow(2).mean()
