@@ -43,6 +43,7 @@ class Agent():
         # Q-Network
         self.qnetwork_local = DQNNetwork(state_size, action_size, seed, hidden_layers_size=hidden_layers_size).to(device)
         self.qnetwork_target = DQNNetwork(state_size, action_size, seed, hidden_layers_size=hidden_layers_size).to(device)
+        self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
 
         # Replay memory
@@ -55,21 +56,20 @@ class Agent():
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
         
-        # Learn every UPDATE_EVERY time steps.
-        self.t_step = (self.t_step + 1) % self.update_every
-        if self.t_step == 0:
-            # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > self.batch_size:
+        # If enough samples are available in memory, get random subset and learn
+        if len(self.memory) > self.batch_size:      
+            # Learn every UPDATE_EVERY time steps.
+            self.t_step = self.t_step + 1
+            
+            if self.t_step % self.update_every == 0:
                 experiences = self.memory.sample()
                 self.learn(experiences, self.gamma)
-         
-        """
-        a implementation of fixed Q-Targets
-        """   
-        self.t_target_step = (self.t_target_step + 1) % self.update_target_very
-        if self.t_target_step == 0:
-            if len(self.memory) > self.batch_size:
-                self.update_target_Q()
+
+            """
+            a implementation of fixed Q-Targets
+            """   
+            if self.t_step % self.update_target_very == 0:
+                    self.update_target_Q()
 
     def act(self, state, eps=0.):
         """Returns actions for given state as per current policy.
@@ -136,7 +136,8 @@ class Agent():
         return (accumulated_rewords - old_values).pow(2).mean()
     
     def update_target_Q(self):
-        self.soft_update(self.qnetwork_local, self.qnetwork_target, self.tau) 
+#         self.soft_update(self.qnetwork_local, self.qnetwork_target, self.tau) 
+        self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.
