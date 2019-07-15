@@ -26,11 +26,16 @@ class ReplayBuffer:
         self.batch_size = batch_size
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
         self.seed = random.seed(seed)
+        self.ptr = 0
     
     def add(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
         e = self.experience(state, action, reward, next_state, done)
-        self.memory.append(e)
+        if len(self.memory) < self.buffer_size:
+            self.memory.append(e)
+        else:
+            self.memory[self.ptr] = e   
+        self.ptr = (self.ptr+1) % self.buffer_size
     
     def sample(self):
         """Randomly sample a batch of experiences from memory."""
@@ -63,17 +68,20 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         
     def add(self, state, action, reward, next_state, done):
         
-        if self.tree_ptr == self.buffer_size-1:
-            self.sum_tree[:-1] = self.sum_tree[1:] 
-            self.min_tree[:-1] = self.min_tree[1:]
-            self.sum_tree[self.tree_ptr] = self.max_priority**self.alpha
-            self.min_tree[self.tree_ptr] = self.max_priority**self.alpha
-        else:
-            self.sum_tree[self.tree_ptr] = self.max_priority**self.alpha
-            self.min_tree[self.tree_ptr] = self.max_priority**self.alpha
-            self.tree_ptr = self.tree_ptr + 1
-        
+        self.sum_tree[self.tree_ptr] = self.max_priority**self.alpha
+        self.min_tree[self.tree_ptr] = self.max_priority**self.alpha
         super().add(state, action, reward, next_state, done)
+        self.tree_ptr = (self.tree_ptr + 1) % self.buffer_size
+        
+#         if self.tree_ptr == self.buffer_size-1:
+#             for i in range(0, self.buffer_size-1):
+#                 self.sum_tree[i] = self.sum_tree[i+1] 
+#                 self.min_tree[i] = self.min_tree[i+1]
+#             self.sum_tree[self.tree_ptr] = self.max_priority**self.alpha
+#             self.min_tree[self.tree_ptr] = self.max_priority**self.alpha
+#         else:
+
+#         
         
     def sample(self, beta=0.4):
         indices = self._sample_proportional()
@@ -85,7 +93,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         next_states = torch.from_numpy(np.vstack([self.memory[index].next_state for index in indices])).float().to(device)
         dones = torch.from_numpy(np.vstack([self.memory[index].done for index in indices]).astype(np.uint8)).float().to(device)
         weights = torch.from_numpy(np.vstack([self._cal_weight(index, beta) for index in indices])).float().to(device)
-        print("weights:\n {}".format(weights))
          
         return (states, actions, rewards, next_states, dones, weights, indices)
         
@@ -115,10 +122,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         current_priority = self.sum_tree[index]
         
  
-        max_w = (len(self.memory) * (min_priority/sum_priority)) ** (-beta)
-        current_w = (len(self.memory) * (current_priority/sum_priority)) ** (-beta)
+#         max_w = (len(self.memory) * (min_priority/sum_priority)) ** (-beta)
+#         current_w = (len(self.memory) * (current_priority/sum_priority)) ** (-beta)
         
-        return current_w / max_w
+#         return current_w / max_w
+        return (min_priority / current_priority) ** beta
                  
                  
         

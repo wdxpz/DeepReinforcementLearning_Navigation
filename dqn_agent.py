@@ -75,6 +75,7 @@ class Agent():
             
             if self.t_step % self.update_every == 0:
                 experiences = self.memory.sample(self.beta)
+#                 print(experiences[6])
                 self.learn(experiences, self.gamma)
 
             """
@@ -103,7 +104,7 @@ class Agent():
         else:
             return random.choice(np.arange(self.action_size))
 
-    def learn(self, experiences, gamma, method='DDQN'):
+    def learn(self, experiences, gamma, method='DQN'):
         """Update value parameters using given batch of experience tuples.
 
         Params
@@ -136,18 +137,14 @@ class Agent():
         if dones[done_index].item():
             accumulated_rewards[done_index] = 0.0 #should not be rewards[done_index], which is acturally -100
             
-        elementary_loss = (accumulated_rewards - old_values).abs()
-        print('elementary_loss: \n {}'.format(elementary_loss))
-        print('squeezed weights: \n {}'.format(weights.squeeze(1)))
-        loss = (elementary_loss*weights.squeeze(1)).pow(2).mean()
-        print('weighted loss: \n {}'.format(loss))
+        elementary_loss = (accumulated_rewards - old_values).pow(2)
+        loss = (elementary_loss*weights.squeeze(1)).mean()
         loss.backward()
         self.optimizer.step()
         
         #update transition priority
         loss_for_prior = elementary_loss.detach().cpu().numpy()
         loss_for_prior = loss_for_prior + self.prior_eps
-#         print("loss_for_prior: \n {}".format(loss_for_prior))
         self.memory.update_priority(indices, loss_for_prior)
 
         
