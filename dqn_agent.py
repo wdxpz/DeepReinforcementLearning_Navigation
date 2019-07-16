@@ -20,7 +20,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Agent():
 
-    def __init__(self, state_size, action_size, seed, buffer_size = int(1e5), batch_size = 64, gamma = 0.99, tau = 1e-3, lr = 5e-4, hidden_layers_size=[64, 32], update_every = 4, update_target_very = 12, alpha = 0.6, beta = 0.4, beta_increment = 1e-4, prior_eps= 1e-6):
+    def __init__(self, state_size, action_size, seed, buffer_size = int(1e5), batch_size = 64, gamma = 0.99, tau = 1e-3, lr = 5e-4, hidden_layers_size=[64, 32], update_every = 4, update_target_very = 12, alpha = 0.6, beta = 0.4, beta_increment = 1e-3, prior_eps= 1e-6):
         """Initialize an Agent object.
         
         Params
